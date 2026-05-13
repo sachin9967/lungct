@@ -1,0 +1,9 @@
+{
+    "image_size": 224,
+    "classes": [
+        "High Risk",
+        "Low Risk",
+        "Medium Risk"
+    ],
+    "num_classes": 3
+}
