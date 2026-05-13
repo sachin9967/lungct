@@ -29,38 +29,54 @@ CNN_SELECTOR_PATH = os.path.join(MODELS_DIR, "cnn_feature_selector.pkl")
 
 def load_all_models():
     """Load all required models and scalers."""
+    models = {}
+    
     try:
         ensemble = joblib.load(ENSEMBLE_PATH)
-        logger.info("Ensemble model loaded")
-        
-        embedding_model = load_model(EMBEDDING_MODEL_PATH)
-        logger.info("CNN embedding model loaded")
-        
-        scaler = joblib.load(SCALER_PATH)
-        logger.info("Radiomics scaler loaded")
-        
-        encoder = joblib.load(ENCODER_PATH)
-        logger.info("Label encoder loaded")
-        
-        fusion_selector = joblib.load(FUSION_SELECTOR_PATH)
-        logger.info("Fusion feature selector loaded")
-        
-        cnn_selector = joblib.load(CNN_SELECTOR_PATH)
-        logger.info("CNN feature selector loaded")
-        
-        return {
-            "ensemble": ensemble,
-            "embedding_model": embedding_model,
-            "scaler": scaler,
-            "encoder": encoder,
-            "fusion_selector": fusion_selector,
-            "cnn_selector": cnn_selector
-        }
+        models["ensemble"] = ensemble
+        logger.info("✅ Ensemble model loaded")
     except Exception as e:
-        logger.error(f"Error loading models: {e}")
-        raise
+        logger.warning(f"⚠️ Ensemble model not found: {e}")
+        
+    try:
+        embedding_model = load_model(EMBEDDING_MODEL_PATH)
+        models["embedding_model"] = embedding_model
+        logger.info("✅ CNN embedding model loaded")
+    except Exception as e:
+        logger.warning(f"⚠️ CNN embedding model not found: {e}")
+        logger.warning("⚠️ Please add cnn_embedding_model.h5 to /models/ directory")
+        
+    try:
+        scaler = joblib.load(SCALER_PATH)
+        models["scaler"] = scaler
+        logger.info("✅ Radiomics scaler loaded")
+    except Exception as e:
+        logger.warning(f"⚠️ Radiomics scaler not found: {e}")
+        
+    try:
+        encoder = joblib.load(ENCODER_PATH)
+        models["encoder"] = encoder
+        logger.info("✅ Label encoder loaded")
+    except Exception as e:
+        logger.warning(f"⚠️ Label encoder not found: {e}")
+        
+    try:
+        fusion_selector = joblib.load(FUSION_SELECTOR_PATH)
+        models["fusion_selector"] = fusion_selector
+        logger.info("✅ Fusion feature selector loaded")
+    except Exception as e:
+        logger.warning(f"⚠️ Fusion feature selector not found: {e}")
+        
+    try:
+        cnn_selector = joblib.load(CNN_SELECTOR_PATH)
+        models["cnn_selector"] = cnn_selector
+        logger.info("✅ CNN feature selector loaded")
+    except Exception as e:
+        logger.warning(f"⚠️ CNN feature selector not found: {e}")
+    
+    return models
 
-# Load models on startup
+# Load models on startup (non-blocking)
 MODELS = load_all_models()
 
 # ============================================================
@@ -78,6 +94,15 @@ def predict_lung_cancer(image_path, radiomics_csv_path):
     Returns:
         dict: Prediction results with confidence and probabilities
     """
+    # Validate all required models are loaded
+    required_models = ["embedding_model", "cnn_selector", "scaler", "fusion_selector", "ensemble", "encoder"]
+    missing_models = [m for m in required_models if m not in MODELS]
+    
+    if missing_models:
+        error_msg = f"Missing models: {', '.join(missing_models)}. Please ensure all model files are in /models/ directory."
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
     try:
         # --------------------------------------------------------
         # IMAGE PREPROCESSING
